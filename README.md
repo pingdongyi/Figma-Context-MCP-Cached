@@ -12,8 +12,6 @@
 
 该版本特别适合 **免费 Figma 账号**、**高频上下文请求**、以及 **Cursor / MCP 客户端** 场景。
 
-> 📖 **部署指南**：查看 [DEPLOYMENT.md](./DEPLOYMENT.md) 了解详细的部署说明，包括 MCP 市场部署、SSE 服务器部署、Docker 部署等。
-
 ---
 
 ## ✨ 特性
@@ -59,29 +57,7 @@
 
 ## 🚀 使用方式
 
-### 方式 1：环境变量（推荐，符合 MCP Client Spec）
-
-在 Cursor 的 `mcp.json` / `settings.json` 中添加如下配置：
-
-```json
-{
-  "mcpServers": {
-    "Figma-Context-MCP-Cached": {
-      "command": "npx",
-      "args": ["-y", "@pactortester/figma-mcp-cached", "--stdio"],
-      "env": {
-        "FIGMA_API_KEY": "YOUR-KEY",
-        "FIGMA_CACHING": "{\"ttl\":{\"value\":30,\"unit\":\"d\"}}",
-        "PORT": "3333"
-      }
-    }
-  }
-}
-```
-
-### 方式 2：命令行参数（适合 MCP 市场托管）
-
-通过命令行参数直接传入配置，无需依赖服务器端环境变量：
+### 命令行参数（适合 MCP 市场托管）
 
 ```json
 {
@@ -98,54 +74,6 @@
     }
   }
 }
-```
-
-### 方式 3：本地调试（SSE 模式）
-
-启动 HTTP 服务器（包含 SSE 端点）进行本地调试：
-
-```bash
-# 使用环境变量
-export FIGMA_API_KEY="your-key"
-export FIGMA_CACHING='{"ttl":{"value":30,"unit":"d"}}'
-node dist/bin.js
-
-# 或使用命令行参数（等号格式）
-node dist/bin.js \
-  --figma-api-key=your-key \
-  --figma-caching='{"ttl":{"value":30,"unit":"d"}}'
-```
-
-启动后，SSE 端点将在 `http://localhost:3333/sse` 可用。
-
----
-
-## 🔑 配置说明
-
-### `FIGMA_API_KEY`（必填）
-
-你的 Figma Personal Access Token。
-
-**配置方式：**
-- 环境变量：`FIGMA_API_KEY=your-key`
-- 命令行参数：`--figma-api-key=your-key`
-
----
-
-### `FIGMA_CACHING`（可选，推荐）
-
-用于启用 **文件级别的持久化缓存**，内容为一个 JSON 字符串。
-
-**配置方式：**
-
-1. **环境变量**（优先级较低）：
-```bash
-FIGMA_CACHING='{ "ttl": { "value": 30, "unit": "d" } }'
-```
-
-2. **命令行参数**（优先级较高，推荐用于 MCP 市场托管）：
-```bash
---figma-caching='{"ttl":{"value":30,"unit":"d"}}'
 ```
 
 **优先级说明：** 命令行参数 > 环境变量
