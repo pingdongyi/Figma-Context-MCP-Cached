@@ -12,15 +12,15 @@ interface ServerConfig {
   outputFormat: "yaml" | "json";
   skipImageDownloads?: boolean;
   caching?: FigmaCachingOptions;
-  configSources: {
-    figmaApiKey: "cli" | "env";
-    figmaOAuthToken: "cli" | "env" | "none";
-    port: "cli" | "env" | "default";
-    outputFormat: "cli" | "env" | "default";
-    envFile: "cli" | "default";
-    skipImageDownloads?: "cli" | "env" | "default";
-    caching?: "env";
-  };
+    configSources: {
+      figmaApiKey: "cli" | "env";
+      figmaOAuthToken: "cli" | "env" | "none";
+      port: "cli" | "env" | "default";
+      outputFormat: "cli" | "env" | "default";
+      envFile: "cli" | "default";
+      skipImageDownloads?: "cli" | "env" | "default";
+      caching?: "cli" | "env";
+    };
 }
 
 function maskApiKey(key: string): string {
@@ -35,6 +35,7 @@ interface CliArgs {
   port?: number;
   json?: boolean;
   "skip-image-downloads"?: boolean;
+  "figma-caching"?: string;
 }
 
 type DurationUnit = "ms" | "s" | "m" | "h" | "d";
@@ -76,6 +77,10 @@ export function getServerConfig(isStdioMode: boolean): ServerConfig {
         type: "boolean",
         description: "Do not register the download_figma_images tool (skip image downloads)",
         default: false,
+      },
+      "figma-caching": {
+        type: "string",
+        description: "Figma caching configuration as JSON string, e.g. '{\"ttl\":{\"value\":30,\"unit\":\"d\"}}'",
       },
     })
     .help()
@@ -167,10 +172,18 @@ export function getServerConfig(isStdioMode: boolean): ServerConfig {
   }
 
   // Handle FIGMA_CACHING
-  const cachingConfig = parseCachingConfig(process.env.FIGMA_CACHING);
-  if (cachingConfig) {
-    config.caching = cachingConfig;
-    config.configSources.caching = "env";
+  if (argv["figma-caching"]) {
+    const cachingConfig = parseCachingConfig(argv["figma-caching"]);
+    if (cachingConfig) {
+      config.caching = cachingConfig;
+      config.configSources.caching = "cli";
+    }
+  } else if (process.env.FIGMA_CACHING) {
+    const cachingConfig = parseCachingConfig(process.env.FIGMA_CACHING);
+    if (cachingConfig) {
+      config.caching = cachingConfig;
+      config.configSources.caching = "env";
+    }
   }
 
   // Validate configuration
@@ -204,7 +217,7 @@ export function getServerConfig(isStdioMode: boolean): ServerConfig {
       `- SKIP_IMAGE_DOWNLOADS: ${config.skipImageDownloads} (source: ${config.configSources.skipImageDownloads})`,
     );
     console.log(
-      `- FIGMA_CACHING: ${config.caching ? JSON.stringify({ cacheDir: config.caching.cacheDir, ttlMs: config.caching.ttlMs }) : "disabled"}`,
+      `- FIGMA_CACHING: ${config.caching ? JSON.stringify({ cacheDir: config.caching.cacheDir, ttlMs: config.caching.ttlMs }) : "disabled"} (source: ${config.configSources.caching ?? "none"})`,
     );
     console.log(); // Empty line for better readability
   }
