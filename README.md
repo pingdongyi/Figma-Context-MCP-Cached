@@ -4,6 +4,8 @@
 
 该版本特别适合 **免费 Figma 账号**、**高频上下文请求**、以及 **Cursor / MCP 客户端** 场景。
 
+> 📖 **部署指南**：查看 [DEPLOYMENT.md](./DEPLOYMENT.md) 了解详细的部署说明，包括 MCP 市场部署、SSE 服务器部署、Docker 部署等。
+
 ---
 
 ## ✨ 特性
@@ -47,9 +49,9 @@
 - ✅ 代码生成、设计评审、设计回溯等场景非常适合缓存
 - ❌ **设计频繁调整阶段不建议启用缓存**
 
-## 🚀 使用方式（Cursor 示例）
+## 🚀 使用方式
 
-推荐通过 **环境变量** 管理凭据与缓存配置（符合 MCP Client Spec）。
+### 方式 1：环境变量（推荐，符合 MCP Client Spec）
 
 在 Cursor 的 `mcp.json` / `settings.json` 中添加如下配置：
 
@@ -69,12 +71,56 @@
 }
 ```
 
+### 方式 2：命令行参数（适合 MCP 市场托管）
+
+通过命令行参数直接传入配置，无需依赖服务器端环境变量：
+
+```json
+{
+  "mcpServers": {
+    "Framelink MCP for Figma": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "figma-developer-mcp-caching-dev-fork",
+        "--stdio",
+        "--figma-api-key=YOUR-KEY",
+        "--figma-caching={\"ttl\":{\"value\":30,\"unit\":\"d\"}}"
+      ]
+    }
+  }
+}
+```
+
+### 方式 3：本地调试（SSE 模式）
+
+启动 HTTP 服务器（包含 SSE 端点）进行本地调试：
+
+```bash
+# 使用环境变量
+export FIGMA_API_KEY="your-key"
+export FIGMA_CACHING='{"ttl":{"value":30,"unit":"d"}}'
+node dist/bin.js
+
+# 或使用命令行参数（等号格式）
+node dist/bin.js \
+  --figma-api-key=your-key \
+  --figma-caching='{"ttl":{"value":30,"unit":"d"}}'
+```
+
+启动后，SSE 端点将在 `http://localhost:3333/sse` 可用。
+
 ---
 
-## 🔑 环境变量说明
+## 🔑 配置说明
 
 ### `FIGMA_API_KEY`（必填）
+
 你的 Figma Personal Access Token。
+
+**配置方式：**
+- 环境变量：`FIGMA_API_KEY=your-key`
+- 命令行参数：`--figma-api-key=your-key`
 
 ---
 
@@ -82,11 +128,19 @@
 
 用于启用 **文件级别的持久化缓存**，内容为一个 JSON 字符串。
 
-示例：
+**配置方式：**
 
+1. **环境变量**（优先级较低）：
 ```bash
 FIGMA_CACHING='{ "ttl": { "value": 30, "unit": "d" } }'
 ```
+
+2. **命令行参数**（优先级较高，推荐用于 MCP 市场托管）：
+```bash
+--figma-caching='{"ttl":{"value":30,"unit":"d"}}'
+```
+
+**优先级说明：** 命令行参数 > 环境变量
 
 #### 字段说明：
 
@@ -142,12 +196,14 @@ FIGMA_CACHING='{ "ttl": { "value": 30, "unit": "d" } }'
 
 ## ⚠️ 注意事项
 
-- 如果未设置 `FIGMA_CACHING`，则保持 **原始不缓存行为**
+- 如果未设置 `FIGMA_CACHING`（环境变量或命令行参数），则保持 **原始不缓存行为**
 - 缓存的是 **完整 Figma 文件数据**
+- 命令行参数优先级高于环境变量
 - 非常适合：
   - 免费 Figma 账号
   - 频繁上下文读取
   - LLM / MCP 自动化场景
+  - MCP 市场托管（通过命令行参数配置，无需服务器端环境变量）
 
 ---
 
