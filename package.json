@@ -1,8 +1,8 @@
 {
-  "name": "figma-developer-mcp-caching-dev-fork",
-  "version": "0.8.0",
-  "mcpName": "io.github.GLips/Figma-Context-MCP",
-  "description": "Dev fork of Framelink's Figma MCP server with persistent caching until upstream merge.",
+  "name": "@pactortester/figma-mcp-cached",
+  "version": "1.0.0",
+  "mcpName": "io.github.Pactortester/Figma-Context-MCP-Cached",
+  "description": "Cache‑enabled Figma Context MCP with persistent disk caching to reduce API rate limits and improve performance.",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
@@ -42,11 +42,11 @@
   "packageManager": "pnpm@10.10.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/stone-w4tch3r/Figma-Context-MCP.git"
+    "url": "git+https://github.com/Pactortester/Figma-Context-MCP-Cached.git"
   },
-  "homepage": "https://github.com/stone-w4tch3r/Figma-Context-MCP#readme",
+  "homepage": "https://github.com/Pactortester/Figma-Context-MCP-Cached#readme",
   "bugs": {
-    "url": "https://github.com/stone-w4tch3r/Figma-Context-MCP/issues"
+    "url": "https://github.com/Pactortester/Figma-Context-MCP-Cached/issues"
   },
   "keywords": [
     "figma",

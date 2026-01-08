@@ -28,7 +28,7 @@
   "mcpServers": {
     "Figma-Context-MCP-Cached": {
       "command": "npx",
-      "args": ["-y", "figma-developer-mcp-caching-dev-fork", "--stdio"],
+      "args": ["-y", "@pactortester/figma-mcp-cached", "--stdio"],
       "env": {
         "FIGMA_API_KEY": "your-figma-api-key",
         "FIGMA_CACHING": "{\"ttl\":{\"value\":30,\"unit\":\"d\"}}"
@@ -49,7 +49,7 @@
       "command": "npx",
       "args": [
         "-y",
-        "figma-developer-mcp-caching-dev-fork",
+        "@pactortester/figma-mcp-cached",
         "--stdio",
         "--figma-api-key=your-figma-api-key",
         "--figma-caching={\"ttl\":{\"value\":30,\"unit\":\"d\"}}"
@@ -68,7 +68,7 @@
       "command": "npx",
       "args": [
         "-y",
-        "figma-developer-mcp-caching-dev-fork",
+        "@pactortester/figma-mcp-cached",
         "--stdio",
         "--env=/path/to/your/.env"
       ]

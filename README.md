@@ -59,9 +59,9 @@
 ```json
 {
   "mcpServers": {
-    "Framelink MCP for Figma": {
+    "Figma-Context-MCP-Cached": {
       "command": "npx",
-      "args": ["-y", "figma-developer-mcp-caching-dev-fork", "--stdio"],
+      "args": ["-y", "@pactortester/figma-mcp-cached", "--stdio"],
       "env": {
         "FIGMA_API_KEY": "YOUR-KEY",
         "FIGMA_CACHING": "{\"ttl\":{\"value\":30,\"unit\":\"d\"}}",
@@ -79,11 +79,11 @@
 ```json
 {
   "mcpServers": {
-    "Framelink MCP for Figma": {
+    "Figma-Context-MCP-Cached": {
       "command": "npx",
       "args": [
         "-y",
-        "figma-developer-mcp-caching-dev-fork",
+        "@pactortester/figma-mcp-cached",
         "--stdio",
         "--figma-api-key=YOUR-KEY",
         "--figma-caching={\"ttl\":{\"value\":30,\"unit\":\"d\"}}"
