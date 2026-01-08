@@ -1,5 +1,12 @@
 # Figma-Context-MCP-Cached
-[![MCP Badge](https://lobehub.com/badge/mcp/pactortester-figma-context-mcp-cached)](https://lobehub.com/mcp/pactortester-figma-context-mcp-cached)
+
+<div align="center">
+  <img src="./docs/logo.png" alt="Figma Context MCP Logo" width="200" style="border-radius: 50%; border: 3px solid #e0e0e0; padding: 10px; background-color: #ffffff;">
+  
+  <br>
+
+  [![MCP Badge](https://lobehub.com/badge/mcp/pactortester-figma-context-mcp-cached)](https://lobehub.com/mcp/pactortester-figma-context-mcp-cached)
+</div>
 
 基于 **Figma Context MCP** 的增强版本，通过**本地持久化缓存**显著减少对 Figma API 的请求次数，从而缓解速率限制问题，提升稳定性与响应速度。
 
