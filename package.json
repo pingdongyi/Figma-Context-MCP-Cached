@@ -1,12 +1,12 @@
 {
   "name": "@pactortester/figma-mcp-cached",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "mcpName": "io.github.Pactortester/Figma-Context-MCP-Cached",
   "description": "Cache‑enabled Figma Context MCP with persistent disk caching to reduce API rate limits and improve performance.",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
-    "figma-developer-mcp": "dist/bin.js"
+    "figma-mcp-cached": "dist/bin.js"
   },
   "files": [
     "dist",
