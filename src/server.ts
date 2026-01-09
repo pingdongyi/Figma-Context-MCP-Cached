@@ -176,12 +176,12 @@ export async function startHttpServer(port: number, mcpServer: McpServer): Promi
       return;
     }
   });
-
-  httpServer = app.listen(port, "127.0.0.1", () => {
+  const host = "0.0.0.0";
+  httpServer = app.listen(port, host, () => {
     Logger.log(`HTTP server listening on port ${port}`);
-    Logger.log(`SSE endpoint available at http://localhost:${port}/sse`);
-    Logger.log(`Message endpoint available at http://localhost:${port}/messages`);
-    Logger.log(`StreamableHTTP endpoint available at http://localhost:${port}/mcp`);
+    Logger.log(`SSE endpoint available at http://${host}:${port}/sse`);
+    Logger.log(`Message endpoint available at http://${host}:${port}/messages`);
+    Logger.log(`StreamableHTTP endpoint available at http://${host}:${port}/mcp`);
   });
 
   process.on("SIGINT", async () => {
