@@ -49,6 +49,48 @@ export class FigmaFileCache {
     return Date.now() - fetchedAt > this.options.ttlMs;
   }
 
+  /**
+   * Check if a cached file exists and is not expired.
+   * This is a lightweight check that only reads metadata, not the full file content.
+   *
+   * @param fileKey - The Figma file key
+   * @returns true if cache exists and is valid, false otherwise
+   */
+  async has(fileKey: string): Promise<boolean> {
+    await this.waitForInit();
+
+    const cachePath = this.getCachePath(fileKey);
+
+    try {
+      const fileContents = await readFile(cachePath, "utf-8");
+      const payload = JSON.parse(fileContents) as StoredFilePayload;
+
+      // Check if payload structure is valid
+      if (!payload || typeof payload.fetchedAt !== "number") {
+        Logger.log(`[FigmaFileCache] Cache file corrupted for ${fileKey}, removing`);
+        await this.safeDelete(cachePath);
+        return false;
+      }
+
+      // Check if expired
+      if (this.isExpired(payload.fetchedAt)) {
+        Logger.log(`[FigmaFileCache] Cache expired for ${fileKey}`);
+        await this.safeDelete(cachePath);
+        return false;
+      }
+
+      Logger.log(`[FigmaFileCache] Cache exists for ${fileKey}`);
+      return true;
+    } catch (error: unknown) {
+      const err = error as { code?: string; message?: string };
+      if (err?.code !== "ENOENT") {
+        const message = err?.message ?? String(error);
+        Logger.log(`[FigmaFileCache] Error checking cache for ${fileKey}: ${message}`);
+      }
+      return false;
+    }
+  }
+
   async get(
     fileKey: string,
   ): Promise<{ data: GetFileResponse; cachedAt: number; ttlMs: number } | null> {

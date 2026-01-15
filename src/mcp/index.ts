@@ -3,8 +3,10 @@ import { FigmaService, type FigmaAuthOptions } from "../services/figma.js";
 import { Logger } from "../utils/logger.js";
 import {
   downloadFigmaImagesTool,
+  figmaPrepareFileTool,
   getFigmaDataTool,
   type DownloadImagesParams,
+  type FigmaPrepareFileParams,
   type GetFigmaDataParams,
 } from "./tools/index.js";
 import type { FigmaCachingOptions } from "~/services/figma-file-cache.js";
@@ -47,6 +49,14 @@ function registerTools(
     skipImageDownloads: boolean;
   },
 ): void {
+  // Register figma_prepare_file tool
+  server.tool(
+    figmaPrepareFileTool.name,
+    figmaPrepareFileTool.description,
+    figmaPrepareFileTool.parameters,
+    (params: FigmaPrepareFileParams) => figmaPrepareFileTool.handler(params, figmaService),
+  );
+
   // Register get_figma_data tool
   server.tool(
     getFigmaDataTool.name,

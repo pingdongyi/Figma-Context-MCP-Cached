@@ -335,6 +335,113 @@ export class FigmaService {
     return { data: response, cacheInfo: { usedCache: false } };
   }
 
+  /**
+   * Check if a file is cached and valid.
+   *
+   * @param fileKey - The Figma file key
+   * @returns true if cache exists and is valid, false otherwise
+   */
+  async hasCachedFile(fileKey: string): Promise<boolean> {
+    if (!this.fileCache) {
+      return false;
+    }
+    return await this.fileCache.has(fileKey);
+  }
+
+  /**
+   * Check if a specific node exists in the cached file.
+   *
+   * @param fileKey - The Figma file key
+   * @param nodeId - The node ID to check (can be multiple nodes separated by ;)
+   * @returns true if file is cached and node exists, false otherwise
+   */
+  async hasCachedNode(fileKey: string, nodeId: string): Promise<boolean> {
+    if (!this.fileCache) {
+      return false;
+    }
+
+    // First check if file is cached
+    const hasFile = await this.hasCachedFile(fileKey);
+    if (!hasFile) {
+      return false;
+    }
+
+    // Get cached file to check if node exists
+    const cacheResult = await this.fileCache.get(fileKey);
+    if (!cacheResult) {
+      return false;
+    }
+
+    // Check if nodeId exists in the cached file
+    const nodeIds = nodeId.split(";").filter((id) => id);
+    if (nodeIds.length === 0) {
+      return false;
+    }
+
+    const nodesMap = findNodesById(cacheResult.data.document, new Set(nodeIds));
+    const allNodesFound = nodeIds.every((id) => nodesMap.has(id));
+
+    if (allNodesFound) {
+      Logger.log(
+        `[FigmaService] All nodes (${nodeIds.join(", ")}) found in cached file ${fileKey}`,
+      );
+    } else {
+      const missingNodes = nodeIds.filter((id) => !nodesMap.has(id));
+      Logger.log(
+        `[FigmaService] Some nodes (${missingNodes.join(", ")}) not found in cached file ${fileKey}`,
+      );
+    }
+
+    return allNodesFound;
+  }
+
+  /**
+   * Prepare a file by ensuring it's cached.
+   * If cache exists and is valid (and nodeId if provided exists), does nothing.
+   * If cache doesn't exist or is expired, or nodeId is not found, fetches the full file and caches it.
+   *
+   * @param fileKey - The Figma file key
+   * @param nodeId - Optional node ID to check in the cached file
+   */
+  async prepareFile(fileKey: string, nodeId?: string): Promise<void> {
+    if (!this.fileCache) {
+      Logger.log(`[FigmaService] Cache not configured, skipping prepare for ${fileKey}`);
+      return;
+    }
+
+    // Check if file is cached
+    const hasFile = await this.hasCachedFile(fileKey);
+    if (!hasFile) {
+      Logger.log(`[FigmaService] Cache not found for ${fileKey}, fetching full file...`);
+      // Use loadFileFromCache which will fetch and cache if not present
+      await this.loadFileFromCache(fileKey);
+      Logger.log(`[FigmaService] Successfully prepared and cached ${fileKey}`);
+      return;
+    }
+
+    // If nodeId is provided, check if it exists in the cached file
+    if (nodeId) {
+      const hasNode = await this.hasCachedNode(fileKey, nodeId);
+      if (hasNode) {
+        Logger.log(
+          `[FigmaService] Cache exists for ${fileKey} and node ${nodeId} is present, no action needed`,
+        );
+        return;
+      } else {
+        Logger.log(
+          `[FigmaService] Cache exists for ${fileKey} but node ${nodeId} not found, fetching full file...`,
+        );
+        // Node not found, refresh cache by fetching full file
+        await this.loadFileFromCache(fileKey);
+        Logger.log(`[FigmaService] Successfully refreshed and cached ${fileKey}`);
+        return;
+      }
+    }
+
+    // File is cached and no nodeId to check
+    Logger.log(`[FigmaService] Cache already exists for ${fileKey}, no action needed`);
+  }
+
   private async loadFileFromCache(
     fileKey: string,
   ): Promise<{ data: GetFileResponse; cacheInfo: CacheInfo }> {
