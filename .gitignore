@@ -41,7 +41,3 @@ Thumbs.db
 
 # mcp-publisher CLI tool files
 .mcpregistry*
-
-# Files removed from Git tracking
-src/mcp/tools/figma-prepare-file-tool.ts
-LICENSE
