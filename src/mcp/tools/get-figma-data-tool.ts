@@ -138,7 +138,7 @@ async function getFigmaData(
 export const getFigmaDataTool = {
   name: "get_figma_data",
   description:
-    "Get comprehensive Figma file data including layout, content, visuals, and component information",
+    "Get comprehensive Figma file data including layout, content, visuals, and component information. IMPORTANT: If the user provided a Figma URL, you MUST call figma_prepare_file FIRST before calling this tool. This tool expects the file to be already prepared.",
   parameters,
   handler: getFigmaData,
 } as const;

@@ -25,6 +25,13 @@ export type CacheInfo = {
   ttlMs?: number;
 };
 
+export type PrepareFileResult = {
+  wasCached: boolean; // 文件是否已缓存
+  nodeExists?: boolean; // nodeId 是否存在（如果提供了 nodeId）
+  action: "no-op" | "fetched" | "refreshed" | "cache-disabled"; // 执行的操作
+  message?: string; // 可选的详细消息
+};
+
 type SvgOptions = {
   outlineText: boolean;
   includeId: boolean;
@@ -402,11 +409,17 @@ export class FigmaService {
    *
    * @param fileKey - The Figma file key
    * @param nodeId - Optional node ID to check in the cached file
+   * @returns Detailed result of the preparation operation
    */
-  async prepareFile(fileKey: string, nodeId?: string): Promise<void> {
+  async prepareFile(fileKey: string, nodeId?: string): Promise<PrepareFileResult> {
+    // Check if cache is enabled
     if (!this.fileCache) {
       Logger.log(`[FigmaService] Cache not configured, skipping prepare for ${fileKey}`);
-      return;
+      return {
+        wasCached: false,
+        action: "cache-disabled",
+        message: "Cache is not enabled. Please configure --figma-caching or FIGMA_CACHING environment variable.",
+      };
     }
 
     // Check if file is cached
@@ -415,31 +428,82 @@ export class FigmaService {
       Logger.log(`[FigmaService] Cache not found for ${fileKey}, fetching full file...`);
       // Use loadFileFromCache which will fetch and cache if not present
       await this.loadFileFromCache(fileKey);
+
+      // If nodeId is provided, check if it exists after fetching
+      if (nodeId) {
+        const hasNode = await this.hasCachedNode(fileKey, nodeId);
+        Logger.log(
+          `[FigmaService] Successfully prepared and cached ${fileKey}. Node ${nodeId} ${hasNode ? "exists" : "not found"} in file.`,
+        );
+        return {
+          wasCached: false,
+          nodeExists: hasNode,
+          action: "fetched",
+          message: hasNode
+            ? `Successfully fetched and cached file ${fileKey}. Node ${nodeId} is present.`
+            : `Successfully fetched and cached file ${fileKey}, but node ${nodeId} was not found in the file.`,
+        };
+      }
+
       Logger.log(`[FigmaService] Successfully prepared and cached ${fileKey}`);
-      return;
+      return {
+        wasCached: false,
+        action: "fetched",
+        message: `Successfully fetched and cached file ${fileKey}.`,
+      };
     }
 
-    // If nodeId is provided, check if it exists in the cached file
+    // File is cached, check nodeId if provided
     if (nodeId) {
       const hasNode = await this.hasCachedNode(fileKey, nodeId);
       if (hasNode) {
         Logger.log(
           `[FigmaService] Cache exists for ${fileKey} and node ${nodeId} is present, no action needed`,
         );
-        return;
+        return {
+          wasCached: true,
+          nodeExists: true,
+          action: "no-op",
+          message: `Cache exists for file ${fileKey} and node ${nodeId} is present.`,
+        };
       } else {
+        // Node not found, refresh cache by fetching full file
         Logger.log(
           `[FigmaService] Cache exists for ${fileKey} but node ${nodeId} not found, fetching full file...`,
         );
-        // Node not found, refresh cache by fetching full file
         await this.loadFileFromCache(fileKey);
-        Logger.log(`[FigmaService] Successfully refreshed and cached ${fileKey}`);
-        return;
+
+        // Re-check nodeId after refresh
+        const stillMissing = !(await this.hasCachedNode(fileKey, nodeId));
+        if (stillMissing) {
+          Logger.log(
+            `[FigmaService] Node ${nodeId} still not found in file ${fileKey} after refresh. It may not exist in the file.`,
+          );
+          return {
+            wasCached: true,
+            nodeExists: false,
+            action: "refreshed",
+            message: `Refreshed cache for file ${fileKey}, but node ${nodeId} was not found. It may not exist in the file.`,
+          };
+        }
+
+        Logger.log(`[FigmaService] Successfully refreshed and cached ${fileKey}. Node ${nodeId} is now present.`);
+        return {
+          wasCached: true,
+          nodeExists: true,
+          action: "refreshed",
+          message: `Refreshed cache for file ${fileKey}. Node ${nodeId} is now present.`,
+        };
       }
     }
 
     // File is cached and no nodeId to check
     Logger.log(`[FigmaService] Cache already exists for ${fileKey}, no action needed`);
+    return {
+      wasCached: true,
+      action: "no-op",
+      message: `Cache already exists for file ${fileKey}.`,
+    };
   }
 
   private async loadFileFromCache(
