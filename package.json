@@ -1,6 +1,6 @@
 {
   "name": "@pactortester/figma-mcp-cached",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "mcpName": "io.github.Pactortester/Figma-Context-MCP-Cached",
   "description": "Cache‑enabled Figma Context MCP with persistent disk caching to reduce API rate limits and improve performance.",
   "type": "module",
@@ -34,7 +34,11 @@
     "prerelease": "pnpm build",
     "release": "changeset publish && git push --follow-tags",
     "pub:release": "pnpm build && npm publish",
-    "pub:release:beta": "pnpm build && npm publish --tag beta"
+    "pub:release:beta": "pnpm build && npm publish --tag beta",
+    "version:patch": "node scripts/version.js patch",
+    "version:minor": "node scripts/version.js minor",
+    "version:major": "node scripts/version.js major",
+    "version:set": "node scripts/version.js"
   },
   "engines": {
     "node": ">=18.0.0"

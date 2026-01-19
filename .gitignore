@@ -1,6 +1,7 @@
 # Dependencies
 node_modules
 .pnpm-store
+backup
 package-lock.json
 .github
 .changeset
