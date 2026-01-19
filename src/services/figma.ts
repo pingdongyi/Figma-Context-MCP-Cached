@@ -471,7 +471,7 @@ export class FigmaService {
         Logger.log(
           `[FigmaService] Cache exists for ${fileKey} but node ${nodeId} not found, fetching full file...`,
         );
-        await this.loadFileFromCache(fileKey);
+        await this.loadFileFromCache(fileKey, true);
 
         // Re-check nodeId after refresh
         const stillMissing = !(await this.hasCachedNode(fileKey, nodeId));
@@ -508,10 +508,24 @@ export class FigmaService {
 
   private async loadFileFromCache(
     fileKey: string,
+    forceRefresh?: boolean,
   ): Promise<{ data: GetFileResponse; cacheInfo: CacheInfo }> {
     if (!this.fileCache) {
       const data = await this.fetchFileFromApi(fileKey);
       return { data, cacheInfo: { usedCache: false } };
+    }
+
+    // If forceRefresh is true, skip cache check and fetch fresh data
+    if (forceRefresh) {
+      Logger.log(`[FigmaService] Force refreshing cache for ${fileKey}`);
+      const fresh = await this.fetchFileFromApi(fileKey);
+      await this.fileCache.set(fileKey, fresh);
+      return {
+        data: fresh,
+        cacheInfo: {
+          usedCache: false,
+        },
+      };
     }
 
     const cacheResult = await this.fileCache.get(fileKey);
@@ -547,7 +561,12 @@ export class FigmaService {
 }
 
 function cloneFileResponseWithDepth(file: GetFileResponse, depth: number): GetFileResponse {
-  if (depth === undefined || depth === null) {
+  if (depth === undefined || depth === null || typeof depth !== "number") {
+    return file;
+  }
+
+  // Ensure document exists and has children
+  if (!file.document) {
     return file;
   }
 
@@ -565,8 +584,24 @@ function cloneNode<T extends FigmaNode>(node: T, depth?: number): T {
     return clone;
   }
 
+  // Additional defensive check: ensure children is an array
+  if (!Array.isArray(node.children) || node.children.length === 0) {
+    delete clone.children;
+    return clone;
+  }
+
+  // Filter out any undefined or null children before processing
+  const validChildren = node.children.filter(
+    (child): child is FigmaNode => child !== undefined && child !== null,
+  );
+
+  if (validChildren.length === 0) {
+    delete clone.children;
+    return clone;
+  }
+
   if (depth === undefined || depth === null) {
-    clone.children = node.children.map((child) => cloneNode(child));
+    clone.children = validChildren.map((child) => cloneNode(child));
     return clone;
   }
 
@@ -575,7 +610,7 @@ function cloneNode<T extends FigmaNode>(node: T, depth?: number): T {
     return clone;
   }
 
-  clone.children = node.children.map((child) => cloneNode(child, depth - 1));
+  clone.children = validChildren.map((child) => cloneNode(child, depth - 1));
 
   return clone;
 }
