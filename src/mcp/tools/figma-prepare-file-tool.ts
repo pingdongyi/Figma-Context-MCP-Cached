@@ -10,6 +10,12 @@ const parameters = {
     .describe(
       "The Figma design file URL, e.g., https://www.figma.com/file/{FILE_KEY}/filename or https://www.figma.com/file/{FILE_KEY}/filename?node-id={NODE_ID}",
     ),
+  forceRefresh: z
+    .boolean()
+    .optional()
+    .describe(
+      "If true, force fetch fresh data from Figma API even if a cached version exists. Use this when the user explicitly requests the latest data or when the design has been recently updated.",
+    ),
 };
 
 const parametersSchema = z.object(parameters);
@@ -20,18 +26,18 @@ async function figmaPrepareFile(
   figmaService: FigmaService,
 ) {
   try {
-    const { figmaUrl } = parametersSchema.parse(params);
+    const { figmaUrl, forceRefresh } = parametersSchema.parse(params);
 
-    Logger.log(`Parsing Figma URL: ${figmaUrl}`);
+    Logger.log(`Parsing Figma URL: ${figmaUrl}${forceRefresh ? " (force refresh)" : ""}`);
 
     // Parse URL to extract fileKey and nodeId
     const { fileKey, nodeId } = parseFigmaUrl(figmaUrl);
 
-    Logger.log(`Extracted fileKey: ${fileKey}, nodeId: ${nodeId ?? "none"}`);
+    Logger.log(`Extracted fileKey: ${fileKey}, nodeId: ${nodeId ?? "none"}, forceRefresh: ${forceRefresh ?? false}`);
 
     // Prepare file - this will check both file cache and nodeId if provided
     // and return detailed result information
-    const result = await figmaService.prepareFile(fileKey, nodeId);
+    const result = await figmaService.prepareFile(fileKey, nodeId, forceRefresh);
 
     // Use the detailed result from prepareFile to generate response message
     let resultMessage: string;
@@ -82,7 +88,7 @@ async function figmaPrepareFile(
 export const figmaPrepareFileTool = {
   name: "figma_prepare_file",
   description:
-    "IMPORTANT: When a user provides a Figma URL, you MUST call this tool FIRST before calling get_figma_data. This tool prepares the Figma file by checking if it's cached and fetching it if needed. Even if caching is not enabled, you should still call this tool first (it will return a warning but continue normally). This ensures the file is ready before data extraction.",
+    "IMPORTANT: When a user provides a Figma URL, you MUST call this tool FIRST before calling get_figma_data. This tool prepares the Figma file by checking if it's cached and fetching it if needed. Even if caching is not enabled, you should still call this tool first (it will return a warning but continue normally). This ensures the file is ready before data extraction. If the user explicitly requests fresh/latest data or mentions the design has been updated, set forceRefresh to true to bypass the cache.",
   parameters,
   handler: figmaPrepareFile,
 } as const;
