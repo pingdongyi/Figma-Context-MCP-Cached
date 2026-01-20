@@ -20,8 +20,10 @@
 - ✅ 显著减少 API 请求次数，缓解速率限制
 - ✅ 可配置缓存有效期（TTL）
 - ✅ 支持自定义缓存目录
-- ✅ **新增 `figma_prepare_file` 工具**：智能准备和缓存 Figma 文件
+- ✅ **`figma_prepare_file` 工具**：智能准备和缓存 Figma 文件
 - ✅ **支持 nodeId 检查**：确保指定的节点存在于缓存中
+- ✅ **支持强制刷新**：通过 `forceRefresh` 参数强制获取最新设计数据
+- ✅ **智能下载路径**：图片下载默认保存到系统下载文件夹（支持 Windows/macOS/Linux）
 - ✅ **优化的 LLM 调用引导**：自动引导正确的工具调用顺序
 - ✅ 完全兼容原有 MCP 接口与调用方式
 - ✅ 适用于 Cursor 等 MCP 客户端
@@ -130,54 +132,155 @@
    - 将结果写入本地缓存
 
 2. 在缓存未过期前：
-   - `get_figma_data`
-   - `get_raw_node`
-
-   等请求将直接从本地缓存返回，不再重复请求 Figma API。
+   - `get_figma_data` 请求将直接从本地缓存返回，不再重复请求 Figma API
 
 3. 当缓存过期：
    - 自动重新拉取并更新缓存
 
-🔄 **强制刷新缓存**  
-如需立即刷新，只需手动删除 `cacheDir` 中对应的缓存文件即可。
+🔄 **强制刷新缓存**
+- **推荐方式**：调用 `figma_prepare_file` 时设置 `forceRefresh: true`，或告诉 LLM "拉取最新数据"
+- **手动方式**：删除 `cacheDir` 中对应的缓存文件
 
 ---
 
-## 🆕 新功能：figma_prepare_file 工具
+## 🛠️ MCP Tools 详细说明
 
-### 功能说明
+本项目提供三个 MCP 工具，用于与 Figma 设计文件交互。
 
-`figma_prepare_file` 是一个智能文件准备工具，用于在获取 Figma 数据之前确保文件已准备好。
+---
+
+### 1️⃣ `figma_prepare_file` - 文件准备工具
+
+智能文件准备工具，用于在获取 Figma 数据之前确保文件已准备好。
 
 **主要特性：**
 - ✅ **自动缓存检查**：检查文件是否已缓存且有效
 - ✅ **nodeId 验证**：如果提供了 nodeId，会验证该节点是否存在于缓存中
 - ✅ **智能刷新**：如果缓存过期或 nodeId 不存在，自动重新拉取文件
+- ✅ **强制刷新**：支持强制拉取最新数据，绕过缓存
 - ✅ **缓存未启用提示**：即使缓存未启用，也会提供明确的提示信息
 
-### 使用方式
+**工具参数：**
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `figmaUrl` | string | ✅ | Figma 设计文件 URL，支持格式：`https://www.figma.com/design/<fileKey>/...?node-id=<nodeId>` |
+| `forceRefresh` | boolean | ❌ | 设为 `true` 时强制从 Figma API 拉取最新数据，绕过缓存。当用户明确要求获取最新数据或设计刚更新时使用 |
+
+**使用方式：**
 
 当用户提供 Figma URL 时，LLM 会自动：
 1. **首先调用** `figma_prepare_file` 准备文件
 2. **然后调用** `get_figma_data` 获取数据
 
-**示例流程：**
 ```
 用户提供 URL → figma_prepare_file (准备文件) → get_figma_data (获取数据)
 ```
 
-### 工具参数
+**强制刷新示例：**
+```json
+{
+  "figmaUrl": "https://www.figma.com/design/xxx/...",
+  "forceRefresh": true
+}
+```
 
-- `figmaUrl` (必填): Figma 设计文件 URL
-  - 支持格式：`https://www.figma.com/design/<fileKey>/...?node-id=<nodeId>`
-  - 自动解析 fileKey 和 nodeId
+用户可以通过以下方式触发强制刷新：
+- "帮我拉取最新的设计稿"
+- "刷新一下这个 Figma 文件"
+- "设计刚更新了，重新获取一下"
 
-### 返回值说明
-
+**返回值说明：**
 - **缓存已存在且有效**：返回提示信息，不拉取数据
 - **缓存不存在或过期**：自动拉取并缓存文件
 - **nodeId 不存在**：重新拉取文件并验证 nodeId
+- **强制刷新**：直接从 API 拉取最新数据并更新缓存
 - **缓存未启用**：返回警告信息，提示需要配置缓存
+
+---
+
+### 2️⃣ `get_figma_data` - 获取 Figma 数据
+
+获取 Figma 文件的完整设计数据，包括布局、内容、视觉样式和组件信息。
+
+**⚠️ 重要**：调用此工具前，必须先调用 `figma_prepare_file` 准备文件。
+
+**工具参数：**
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `fileKey` | string | ✅ | Figma 文件的 key，通常在 URL 中：`figma.com/design/<fileKey>/...` |
+| `nodeId` | string | ❌ | 要获取的节点 ID，格式如 `1234:5678` 或 `1234-5678`。如果 URL 中包含 `node-id` 参数则必须使用 |
+| `depth` | number | ❌ | 遍历节点树的深度。除非用户明确要求，否则不要使用此参数 |
+
+**使用示例：**
+```json
+{
+  "fileKey": "QlQwKAl9abcdhvlfvpM5K",
+  "nodeId": "2777:9428"
+}
+```
+
+**返回数据：**
+- `metadata`：文件元数据
+- `nodes`：节点树结构，包含布局、样式、文本等信息
+- `globalVars`：全局样式变量（复用的样式会被提取为变量）
+- `components`：组件定义
+- `componentSets`：组件集定义
+
+---
+
+### 3️⃣ `download_figma_images` - 下载 Figma 图片
+
+从 Figma 文件中下载 SVG 和 PNG 格式的图片资源。
+
+**工具参数：**
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `fileKey` | string | ✅ | Figma 文件的 key |
+| `nodes` | array | ✅ | 要下载的节点数组（详见下方） |
+| `localPath` | string | ❌ | 图片保存目录的绝对路径。不提供时默认保存到系统下载文件夹 |
+| `pngScale` | number | ❌ | PNG 图片的导出倍率，默认为 `2`（2x） |
+
+**`nodes` 数组中每个元素的参数：**
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `nodeId` | string | ✅ | 节点 ID，格式如 `1234:5678` 或 `1234-5678` |
+| `fileName` | string | ✅ | 保存的文件名，必须以 `.png` 或 `.svg` 结尾 |
+| `imageRef` | string | ❌ | 图片填充的引用 ID。如果节点使用图片填充则必须提供；下载 SVG 矢量图时留空 |
+| `needsCropping` | boolean | ❌ | 是否需要根据变换矩阵裁剪图片 |
+| `cropTransform` | array | ❌ | Figma 变换矩阵，用于图片裁剪 |
+| `requiresImageDimensions` | boolean | ❌ | 是否需要返回图片尺寸信息（用于生成 CSS 变量） |
+
+**使用示例：**
+```json
+{
+  "fileKey": "QlQwKAl9abcdhvlfvpM5K",
+  "nodes": [
+    {
+      "nodeId": "2777-9428",
+      "fileName": "hero-image.png"
+    },
+    {
+      "nodeId": "2777-9430",
+      "fileName": "icon-star.svg"
+    }
+  ],
+  "pngScale": 2
+}
+```
+
+**默认下载路径：**
+- **macOS**: `~/Downloads`
+- **Linux**: `~/Downloads`
+- **Windows**: `C:\Users\<username>\Downloads`
+
+**返回信息：**
+- 下载成功的图片数量
+- 保存路径
+- 每张图片的文件名、尺寸、是否裁剪等信息
 
 ---
 
@@ -203,9 +306,15 @@
 
 ---
 
+## 📋 更新日志
+
+查看完整更新日志请访问 [CHANGELOG.md](./CHANGELOG.md)
+
+---
+
 ## 📄 License
 
-与原项目保持一致。
+本项目基于 [MIT License](./LICENSE) 开源。
 
 ---
 
