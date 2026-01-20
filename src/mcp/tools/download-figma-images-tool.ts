@@ -1,6 +1,18 @@
 import { z } from "zod";
+import os from "os";
+import path from "path";
 import { FigmaService } from "../../services/figma.js";
 import { Logger } from "../../utils/logger.js";
+
+/**
+ * Get the default downloads folder for the current OS
+ * - Windows: C:\Users\<username>\Downloads
+ * - macOS: /Users/<username>/Downloads
+ * - Linux: /home/<username>/Downloads
+ */
+function getDefaultDownloadsPath(): string {
+  return path.join(os.homedir(), "Downloads");
+}
 
 const parameters = {
   fileKey: z
@@ -62,8 +74,9 @@ const parameters = {
     ),
   localPath: z
     .string()
+    .optional()
     .describe(
-      "The absolute path to the directory where images are stored in the project. If the directory does not exist, it will be created. The format of this path should respect the directory format of the operating system you are running on. Don't use any special character escaping in the path name either.",
+      "The absolute path to the directory where images will be saved. If not provided, defaults to the system Downloads folder (e.g., ~/Downloads on macOS/Linux, C:\\Users\\<username>\\Downloads on Windows). If the directory does not exist, it will be created.",
     ),
 };
 
@@ -73,7 +86,11 @@ export type DownloadImagesParams = z.infer<typeof parametersSchema>;
 // Enhanced handler function with image processing support
 async function downloadFigmaImages(params: DownloadImagesParams, figmaService: FigmaService) {
   try {
-    const { fileKey, nodes, localPath, pngScale = 2 } = parametersSchema.parse(params);
+    const { fileKey, nodes, localPath: providedPath, pngScale = 2 } = parametersSchema.parse(params);
+
+    // Use provided path or default to system Downloads folder
+    const localPath = providedPath || getDefaultDownloadsPath();
+    Logger.log(`Downloading images to: ${localPath}`);
 
     // Process nodes: collect unique downloads and track which requests they satisfy
     const downloadItems = [];
@@ -164,7 +181,7 @@ async function downloadFigmaImages(params: DownloadImagesParams, figmaService: F
       content: [
         {
           type: "text" as const,
-          text: `Downloaded ${successCount} images:\n${imagesList}`,
+          text: `Downloaded ${successCount} images to ${localPath}:\n${imagesList}`,
         },
       ],
     };

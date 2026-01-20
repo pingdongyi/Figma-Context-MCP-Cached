@@ -178,9 +178,13 @@ export class FigmaService {
   ): Promise<ImageProcessingResult[]> {
     if (items.length === 0) return [];
 
-    const sanitizedPath = path.normalize(localPath).replace(/^(\.\.(\/|\\|$))+/, "");
-    const resolvedPath = path.resolve(sanitizedPath);
-    if (!resolvedPath.startsWith(path.resolve(process.cwd()))) {
+    // Normalize the path and resolve to absolute
+    const resolvedPath = path.resolve(path.normalize(localPath));
+
+    // Security check: prevent directory traversal attacks
+    // Only block if the normalized path still contains ".." segments
+    const normalizedSegments = resolvedPath.split(path.sep);
+    if (normalizedSegments.includes("..")) {
       throw new Error("Invalid path specified. Directory traversal is not allowed.");
     }
 
@@ -409,9 +413,10 @@ export class FigmaService {
    *
    * @param fileKey - The Figma file key
    * @param nodeId - Optional node ID to check in the cached file
+   * @param forceRefresh - If true, force fetch fresh data from API even if cache exists
    * @returns Detailed result of the preparation operation
    */
-  async prepareFile(fileKey: string, nodeId?: string): Promise<PrepareFileResult> {
+  async prepareFile(fileKey: string, nodeId?: string, forceRefresh?: boolean): Promise<PrepareFileResult> {
     // Check if cache is enabled
     if (!this.fileCache) {
       Logger.log(`[FigmaService] Cache not configured, skipping prepare for ${fileKey}`);
@@ -419,6 +424,34 @@ export class FigmaService {
         wasCached: false,
         action: "cache-disabled",
         message: "Cache is not enabled. Please configure --figma-caching or FIGMA_CACHING environment variable.",
+      };
+    }
+
+    // If forceRefresh is true, always fetch fresh data
+    if (forceRefresh) {
+      Logger.log(`[FigmaService] Force refresh requested for ${fileKey}, fetching fresh data...`);
+      await this.loadFileFromCache(fileKey, true);
+
+      if (nodeId) {
+        const hasNode = await this.hasCachedNode(fileKey, nodeId);
+        Logger.log(
+          `[FigmaService] Force refreshed ${fileKey}. Node ${nodeId} ${hasNode ? "exists" : "not found"} in file.`,
+        );
+        return {
+          wasCached: false,
+          nodeExists: hasNode,
+          action: "refreshed",
+          message: hasNode
+            ? `Force refreshed and cached file ${fileKey}. Node ${nodeId} is present.`
+            : `Force refreshed and cached file ${fileKey}, but node ${nodeId} was not found in the file.`,
+        };
+      }
+
+      Logger.log(`[FigmaService] Force refreshed and cached ${fileKey}`);
+      return {
+        wasCached: false,
+        action: "refreshed",
+        message: `Force refreshed and cached file ${fileKey}. The file is now up to date.`,
       };
     }
 
