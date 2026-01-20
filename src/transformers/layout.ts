@@ -165,12 +165,12 @@ function buildSimplifiedFrameValues(n: FigmaDocumentNode): SimplifiedLayout | { 
 
   // TODO: convertAlign should be two functions, one for justifyContent and one for alignItems
   frameValues.justifyContent = convertAlign(n.primaryAxisAlignItems ?? "MIN", {
-    children: n.children,
+    children: n.children ?? [],
     axis: "primary",
     mode: frameValues.mode,
   });
   frameValues.alignItems = convertAlign(n.counterAxisAlignItems ?? "MIN", {
-    children: n.children,
+    children: n.children ?? [],
     axis: "counter",
     mode: frameValues.mode,
   });
