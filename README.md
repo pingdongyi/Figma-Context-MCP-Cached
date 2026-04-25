@@ -306,6 +306,128 @@
 
 ---
 
+## 🐳 Docker 部署
+
+本项目支持 Docker 部署，适合云服务器、容器化环境或无需安装 Node.js 的场景。
+
+### 快速启动
+
+```bash
+# 1. 创建 .env 文件配置认证
+echo "FIGMA_API_KEY=your-api-key-here" > .env
+
+# 2. 启动服务
+docker compose up -d
+
+# 3. 查看日志
+docker compose logs -f
+```
+
+### 配置说明
+
+#### 环境变量
+
+| 变量 | 必填 | 说明 |
+|------|------|------|
+| `FIGMA_API_KEY` | ✅* | Figma Personal Access Token |
+| `FIGMA_OAUTH_TOKEN` | ✅* | Figma OAuth Bearer Token（与 API Key 任选其一） |
+| `MCP_AUTH_TOKEN` | ❌ | HTTP 端点认证令牌（生产环境强烈推荐设置） |
+| `PORT` | ❌ | HTTP 服务端口，默认 `3333` |
+| `OUTPUT_FORMAT` | ❌ | 输出格式：`yaml` 或 `json`，默认 `yaml` |
+| `FIGMA_CACHING` | ❌ | 缓存配置 JSON，如 `{"ttl":{"value":30,"unit":"d"}}` |
+
+*认证必填，API Key 或 OAuth Token 至少设置一个。
+
+#### HTTP 端点认证
+
+为防止未授权访问，生产部署强烈建议设置 `MCP_AUTH_TOKEN`：
+
+```bash
+# 在 .env 文件中添加
+MCP_AUTH_TOKEN=your-secure-token-here
+```
+
+客户端需要在请求中携带认证令牌：
+
+```bash
+# StreamableHTTP 请求示例
+curl -X POST http://localhost:3333/mcp \
+  -H "Authorization: Bearer your-secure-token-here" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"initialize","params":{},"id":1}'
+```
+
+如果未设置 `MCP_AUTH_TOKEN`，HTTP 端点将**无认证保护**，仅适合本地开发或内网环境。
+
+#### 缓存配置示例
+
+```bash
+# 在 .env 文件中添加
+FIGMA_CACHING={"ttl":{"value":30,"unit":"d"},"cacheDir":"/app/cache"}
+```
+
+#### 缓存持久化
+
+Docker Compose 配置中默认使用 `figma-cache` 卷持久化缓存数据。即使容器重启，缓存也会保留。
+
+### MCP 客户端连接
+
+HTTP 模式下，MCP 客户端可通过以下方式连接：
+
+#### StreamableHTTP（推荐）
+
+```
+http://localhost:3333/mcp
+```
+
+#### SSE（传统模式）
+
+```
+http://localhost:3333/sse
+```
+
+### 常用命令
+
+```bash
+# 构建镜像
+docker compose build
+
+# 启动服务
+docker compose up -d
+
+# 停止服务
+docker compose down
+
+# 查看运行状态
+docker compose ps
+
+# 查看日志
+docker compose logs -f
+
+# 重启服务
+docker compose restart
+
+# 清理缓存（重新拉取数据）
+docker volume rm figma-cache
+```
+
+### 单独构建镜像
+
+```bash
+# 构建镜像
+docker build -t figma-mcp-cached:latest .
+
+# 手动运行容器
+docker run -d \
+  --name figma-mcp \
+  -p 3333:3333 \
+  -e FIGMA_API_KEY=your-api-key \
+  -v figma-cache:/app/cache \
+  figma-mcp-cached:latest
+```
+
+---
+
 ## 📋 更新日志
 
 查看完整更新日志请访问 [CHANGELOG.md](./CHANGELOG.md)

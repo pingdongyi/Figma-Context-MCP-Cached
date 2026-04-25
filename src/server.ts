@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import express, { type Request, type Response } from "express";
+import express, { type Request, type Response, type NextFunction } from "express";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
@@ -15,6 +15,51 @@ const transports = {
   streamable: {} as Record<string, StreamableHTTPServerTransport>,
   sse: {} as Record<string, SSEServerTransport>,
 };
+
+/**
+ * Authentication middleware for HTTP endpoints.
+ * Validates Bearer token against MCP_AUTH_TOKEN environment variable.
+ * If MCP_AUTH_TOKEN is not set, authentication is skipped (warning logged at startup).
+ */
+function authMiddleware(req: Request, res: Response, next: NextFunction): void {
+  const authToken = process.env.MCP_AUTH_TOKEN;
+
+  // Skip auth if token not configured
+  if (!authToken) {
+    next();
+    return;
+  }
+
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    res.status(401).json({
+      jsonrpc: "2.0",
+      error: {
+        code: -32001,
+        message: "Unauthorized: Missing or invalid Authorization header",
+      },
+      id: null,
+    });
+    return;
+  }
+
+  const token = authHeader.slice(7); // Remove "Bearer " prefix
+
+  if (token !== authToken) {
+    res.status(401).json({
+      jsonrpc: "2.0",
+      error: {
+        code: -32001,
+        message: "Unauthorized: Invalid token",
+      },
+      id: null,
+    });
+    return;
+  }
+
+  next();
+}
 
 /**
  * Start the MCP server in either stdio or HTTP mode.
@@ -44,8 +89,20 @@ export async function startServer(): Promise<void> {
 export async function startHttpServer(port: number, mcpServer: McpServer): Promise<void> {
   const app = express();
 
+  // Warn if auth token not configured
+  if (!process.env.MCP_AUTH_TOKEN) {
+    Logger.log("⚠️ Warning: MCP_AUTH_TOKEN not set. HTTP endpoints are unprotected.");
+  } else {
+    Logger.log("✅ HTTP authentication enabled via MCP_AUTH_TOKEN");
+  }
+
   // Parse JSON requests for the Streamable HTTP endpoint only, will break SSE endpoint
   app.use("/mcp", express.json());
+
+  // Apply authentication middleware to all MCP endpoints
+  app.use("/mcp", authMiddleware);
+  app.use("/sse", authMiddleware);
+  app.use("/messages", authMiddleware);
 
   // Modern Streamable HTTP endpoint
   app.post("/mcp", async (req, res) => {

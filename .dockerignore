@@ -1,0 +1,44 @@
+# Dependencies
+node_modules
+.pnpm-store
+
+# Build output (will be copied from builder stage)
+dist
+
+# Development files
+*.log
+logs/
+.env
+.env.local
+.env.*.local
+
+# IDE and editor
+.vscode
+.idea
+*.swp
+*.swo
+
+# Git
+.git
+.gitignore
+
+# Trellis (development tooling)
+.trellis
+.claude
+
+# Testing
+coverage
+*.test.ts
+
+# Documentation (not needed in container)
+docs/
+*.md
+!README.md
+
+# Scripts (not needed in container)
+scripts/
+
+# Misc
+.DS_Store
+Thumbs.db
+*.tgz

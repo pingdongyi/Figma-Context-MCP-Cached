@@ -20,6 +20,7 @@ interface ServerConfig {
       envFile: "cli" | "default";
       skipImageDownloads?: "cli" | "env" | "default";
       caching?: "cli" | "env";
+      mcpAuthToken?: "env" | "none";
     };
 }
 
@@ -121,6 +122,7 @@ export function getServerConfig(isStdioMode: boolean): ServerConfig {
       envFile: envFileSource,
       skipImageDownloads: "default",
       caching: undefined,
+      mcpAuthToken: "none",
     },
   };
 
@@ -186,6 +188,11 @@ export function getServerConfig(isStdioMode: boolean): ServerConfig {
     }
   }
 
+  // Handle MCP_AUTH_TOKEN (for HTTP endpoint authentication)
+  if (process.env.MCP_AUTH_TOKEN) {
+    config.configSources.mcpAuthToken = "env";
+  }
+
   // Validate configuration
   if (!auth.figmaApiKey && !auth.figmaOAuthToken) {
     console.error(
@@ -218,6 +225,9 @@ export function getServerConfig(isStdioMode: boolean): ServerConfig {
     );
     console.log(
       `- FIGMA_CACHING: ${config.caching ? JSON.stringify({ cacheDir: config.caching.cacheDir, ttlMs: config.caching.ttlMs }) : "disabled"} (source: ${config.configSources.caching ?? "none"})`,
+    );
+    console.log(
+      `- MCP_AUTH_TOKEN: ${process.env.MCP_AUTH_TOKEN ? "configured (hidden)" : "not set"} (source: ${config.configSources.mcpAuthToken})`,
     );
     console.log(); // Empty line for better readability
   }
